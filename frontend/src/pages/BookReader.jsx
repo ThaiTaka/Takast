@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaPlay, FaPause, FaVolumeUp, FaMale, FaFemale, FaCog, FaHeart, FaRegHeart, FaRobot } from 'react-icons/fa';
 import { getBookContent } from '../api';
 import { generatePiperAudio, checkPiperHealth } from '../api/piperApi';
+import { getBestVietnameseVoice, hasVietnameseVoice, logAvailableVoices } from '../utils/voiceDetector';
 import { useBookStore } from '../store';
 import SettingsPanel from '../components/SettingsPanel';
 
@@ -14,6 +15,7 @@ export default function BookReader() {
   const [showSettings, setShowSettings] = useState(false);
   const [usePiperTTS, setUsePiperTTS] = useState(false);
   const [piperAvailable, setPiperAvailable] = useState(false);
+  const [hasViVoice, setHasViVoice] = useState(false);
   const [audioQueue, setAudioQueue] = useState([]);
   const [currentAudioIndex, setCurrentAudioIndex] = useState(0);
   const audioPlayerRef = useRef(null);
@@ -51,13 +53,30 @@ export default function BookReader() {
   useEffect(() => {
     loadBook();
     checkPiperStatus();
+    checkVietnameseVoice();
     return () => {
+      // Stop all audio when leaving page
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.pause();
       resetReading();
       if (audioPlayerRef.current) {
         audioPlayerRef.current.pause();
+        audioPlayerRef.current.src = '';
       }
     };
   }, [filename]);
+
+  const checkVietnameseVoice = async () => {
+    const hasVi = await hasVietnameseVoice();
+    setHasViVoice(hasVi);
+    
+    // Log available voices for debugging
+    await logAvailableVoices();
+    
+    if (!hasVi) {
+      console.warn('⚠️ Browser không có giọng tiếng Việt. Khuyên dùng Piper TTS!');
+    }
+  };
 
   const checkPiperStatus = async () => {
     const available = await checkPiperHealth();
@@ -84,10 +103,19 @@ export default function BookReader() {
 
   const toggleReading = () => {
     if (isReading) {
-      // Pause reading
+      // Stop reading completely
       if (usePiperTTS && audioPlayerRef.current) {
         audioPlayerRef.current.pause();
+        audioPlayerRef.current.src = ''; // Clear audio source
+        setAudioQueue([]);
+        setCurrentAudioIndex(0);
       } else {
+        // Cancel all speech synthesis
+        window.speechSynthesis.cancel();
+        // Stop immediately
+        window.speechSynthesis.pause();
+        // Resume and cancel again to ensure it stops
+        window.speechSynthesis.resume();
         window.speechSynthesis.cancel();
       }
       setIsReading(false);
@@ -153,7 +181,7 @@ export default function BookReader() {
   };
 
 
-  const readFromLine = (lineIndex) => {
+  const readFromLine = async (lineIndex) => {
     if (!book || lineIndex >= book.lines.length) {
       setIsReading(false);
       return;
@@ -174,36 +202,18 @@ export default function BookReader() {
     }
 
     const utterance = new SpeechSynthesisUtterance(line);
-    utterance.lang = 'vi-VN';
+    utterance.lang = 'vi-VN'; // Force Vietnamese language
     utterance.rate = readingSpeed;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    // Get voices
-    const voices = window.speechSynthesis.getVoices();
-    const viVoices = voices.filter(voice => 
-      voice.lang.startsWith('vi') || voice.lang.startsWith('en')
-    );
-    
-    if (viVoices.length > 0) {
-      let selectedVoice = null;
-      
-      if (voiceGender === 'female') {
-        selectedVoice = viVoices.find(voice => {
-          const name = voice.name.toLowerCase();
-          return name.includes('female') || name.includes('woman') || 
-                 name.includes('nữ') || name.includes('linh') || 
-                 (!name.includes('male') && !name.includes('man'));
-        });
-      } else {
-        selectedVoice = viVoices.find(voice => {
-          const name = voice.name.toLowerCase();
-          return name.includes('male') || name.includes('man') || 
-                 name.includes('nam') || name.includes('minh');
-        });
-      }
-      
-      utterance.voice = selectedVoice || viVoices[0];
+    // Use utility to get best Vietnamese voice
+    const bestVoice = await getBestVietnameseVoice(voiceGender);
+    if (bestVoice) {
+      utterance.voice = bestVoice;
+      console.log('🎤 Using voice:', bestVoice.name, '(', bestVoice.lang, ')');
+    } else {
+      console.warn('⚠️ No Vietnamese voice available');
     }
 
     utterance.onstart = () => {
@@ -211,14 +221,18 @@ export default function BookReader() {
     };
 
     utterance.onend = () => {
-      if (isReading) {
-        const nextIndex = lineIndex + 1;
-        if (nextIndex < book.lines.length) {
-          setTimeout(() => readFromLine(nextIndex), 400);
-        } else {
-          setIsReading(false);
-          alert('Đã đọc hết sách! 📚✨');
-        }
+      // Check if reading is still active
+      if (!isReading) {
+        window.speechSynthesis.cancel();
+        return;
+      }
+      
+      const nextIndex = lineIndex + 1;
+      if (nextIndex < book.lines.length) {
+        setTimeout(() => readFromLine(nextIndex), 400);
+      } else {
+        setIsReading(false);
+        alert('Đã đọc hết sách!');
       }
     };
 
@@ -335,10 +349,33 @@ export default function BookReader() {
                     onChange={() => setUsePiperTTS(true)}
                     className="text-primary-500"
                   />
-                  <span className="text-sm font-semibold text-blue-600">Piper TTS ⚡</span>
+                  <span className="text-sm font-semibold text-blue-600">Piper TTS ⚡ (Khuyên dùng)</span>
                 </label>
               </div>
             </div>
+            <p className="text-xs text-gray-600 mt-2">
+              💡 Piper TTS có giọng đọc tiếng Việt tự nhiên hơn Web Speech API
+            </p>
+          </div>
+        )}
+        
+        {/* Warning when using Web Speech API without Piper */}
+        {!usePiperTTS && !piperAvailable && (
+          <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-300">
+            <p className="text-sm text-yellow-800">
+              ⚠️ <strong>Web Speech API</strong> của browser có thể không hỗ trợ tiếng Việt tốt. 
+              Để có trải nghiệm tốt nhất, hãy cài đặt <strong>Piper TTS</strong> theo hướng dẫn trong README.
+            </p>
+          </div>
+        )}
+        
+        {/* Warning when browser doesn't have Vietnamese voice */}
+        {!usePiperTTS && !hasViVoice && (
+          <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-300">
+            <p className="text-sm text-red-800">
+              🚫 <strong>Browser không hỗ trợ giọng tiếng Việt!</strong> Giọng đọc sẽ bị sai phát âm. 
+              Vui lòng dùng <strong>Piper TTS</strong> để có giọng đọc tiếng Việt chuẩn.
+            </p>
           </div>
         )}
 
