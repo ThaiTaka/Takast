@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 min-h-screen;
+  }
+}
+
+@layer components {
+  .book-card {
+    @apply bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 p-6 cursor-pointer transform hover:-translate-y-1;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg transition-colors duration-200;
+  }
+  
+  .reading-line {
+    @apply transition-all duration-300 rounded-md;
+  }
+  
+  .reading-line.active {
+    @apply bg-yellow-200 px-3 py-2 shadow-md border-l-4 border-yellow-500;
+    animation: highlight-pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    background-color: rgb(254 240 138);
+  }
+  50% {
+    background-color: rgb(253 224 71);
+  }
+}

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piper TTS Demo - Vietnamese Book Reader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            font-family: 'Segoe UI', sans-serif;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: #ff4757;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ee5a6f;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+            border-left: 4px solid #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+            border-left: 4px solid #d32f2f;
+        }
+
+        .queue-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .queue-info h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .queue-item {
+            padding: 10px;
+            background: white;
+            border-left: 3px solid #667eea;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .queue-item.playing {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+
+        .queue-item.completed {
+            opacity: 0.5;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Piper TTS Demo</h1>
+            <p>Vietnamese Book Reader - Local TTS Server</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <label for="bookText">📚 Nội dung sách (Text to Speech):</label>
+                <textarea 
+                    id="bookText" 
+                    placeholder="Nhập hoặc dán nội dung sách vào đây... Hệ thống sẽ tự động tách thành các câu để đọc liền mạch."
+                >Xin chào, đây là hệ thống đọc sách tiếng Việt sử dụng Piper TTS. Hệ thống có khả năng đọc văn bản dài, tự động tách câu và phát liền mạch. Bạn có thể nhập nội dung sách bất kỳ và nghe ngay lập tức.</textarea>
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" id="readBtn" onclick="startReading()">
+                    ▶️ Đọc sách
+                </button>
+                <button class="btn-secondary" id="pauseBtn" onclick="pauseReading()" disabled>
+                    ⏸️ Tạm dừng
+                </button>
+                <button class="btn-secondary" id="resumeBtn" onclick="resumeReading()" disabled>
+                    ▶️ Tiếp tục
+                </button>
+                <button class="btn-danger" id="stopBtn" onclick="stopReading()" disabled>
+                    ⏹️ Dừng
+                </button>
+                <button class="btn-secondary" onclick="clearCache()">
+                    🗑️ Xóa Cache
+                </button>
+            </div>
+
+            <div id="status" class="status"></div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+
+            <div class="queue-info" id="queueInfo" style="display: none;">
+                <h3>📋 Hàng đợi phát âm thanh:</h3>
+                <div id="queueList"></div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="value" id="totalChunks">0</div>
+                    <div class="label">Tổng đoạn</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="currentChunk">0</div>
+                    <div class="label">Đang phát</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="cachedCount">0</div>
+                    <div class="label">Cached</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let audioQueue = [];
+        let currentIndex = 0;
+        let isPaused = false;
+        let audioPlayer = document.getElementById('audioPlayer');
+
+        // Initialize
+        window.addEventListener('load', () => {
+            checkHealth();
+        });
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                showStatus(`✓ Server OK - Cache: ${data.cached_files} files`, 'success');
+                document.getElementById('cachedCount').textContent = data.cached_files;
+            } catch (error) {
+                showStatus('❌ Cannot connect to TTS server. Please start server.py', 'error');
+            }
+        }
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status show ${type}`;
+        }
+
+        function splitTextToSentences(text) {
+            // Split by Vietnamese sentence delimiters
+            const sentences = text.split(/[.!?;]\s+/);
+            return sentences.filter(s => s.trim().length > 0);
+        }
+
+        async function startReading() {
+            const text = document.getElementById('bookText').value.trim();
+            
+            if (!text) {
+                showStatus('⚠️ Vui lòng nhập nội dung sách', 'error');
+                return;
+            }
+
+            // Reset state
+            audioQueue = [];
+            currentIndex = 0;
+            isPaused = false;
+
+            // Update UI
+            document.getElementById('readBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('queueInfo').style.display = 'block';
+
+            showStatus('📡 Đang xử lý văn bản và tạo audio...', 'info');
+
+            try {
+                // Call batch API
+                const response = await fetch(`${API_BASE}/api/tts/batch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    audioQueue = data.audio_urls;
+                    document.getElementById('totalChunks').textContent = data.total_chunks;
+                    
+                    renderQueue();
+                    showStatus(`✓ Đã tạo ${data.total_chunks} đoạn audio. Bắt đầu phát...`, 'success');
+                    
+                    // Start playing
+                    playNextAudio();
+                } else {
+                    showStatus('❌ Lỗi tạo audio', 'error');
+                }
+
+            } catch (error) {
+                showStatus(`❌ Lỗi: ${error.message}`, 'error');
+                document.getElementById('readBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        function playNextAudio() {
+            if (isPaused || currentIndex >= audioQueue.length) {
+                if (currentIndex >= audioQueue.length) {
+                    // Finished all
+                    showStatus('✓ Đã đọc xong toàn bộ nội dung!', 'success');
+                    resetControls();
+                }
+                return;
+            }
+
+            const audioUrl = `${API_BASE}${audioQueue[currentIndex].url}`;
+            
+            // Update UI
+            document.getElementById('currentChunk').textContent = currentIndex + 1;
+            updateProgress();
+            renderQueue();
+
+            // Play audio
+            audioPlayer.src = audioUrl;
+            audioPlayer.play();
+
+            // Listen for audio end event
+            audioPlayer.onended = () => {
+                currentIndex++;
+                playNextAudio();
+            };
+
+            audioPlayer.onerror = (error) => {
+                showStatus(`❌ Lỗi phát audio chunk ${currentIndex + 1}`, 'error');
+                currentIndex++;
+                playNextAudio();
+            };
+        }
+
+        function pauseReading() {
+            isPaused = true;
+            audioPlayer.pause();
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('resumeBtn').disabled = false;
+            showStatus('⏸️ Đã tạm dừng', 'info');
+        }
+
+        function resumeReading() {
+            isPaused = false;
+            audioPlayer.play();
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('resumeBtn').disabled = true;
+            showStatus('▶️ Tiếp tục phát...', 'info');
+        }
+
+        function stopReading() {
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+            currentIndex = audioQueue.length; // End queue
+            isPaused = false;
+            
+            showStatus('⏹️ Đã dừng', 'info');
+            resetControls();
+        }
+
+        function resetControls() {
+            document.getElementById('readBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('resumeBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = true;
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const progress = audioQueue.length > 0 
+                ? (currentIndex / audioQueue.length) * 100 
+                : 0;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        function renderQueue() {
+            const queueList = document.getElementById('queueList');
+            queueList.innerHTML = '';
+
+            audioQueue.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'queue-item';
+                
+                if (index === currentIndex && !isPaused) {
+                    div.classList.add('playing');
+                } else if (index < currentIndex) {
+                    div.classList.add('completed');
+                }
+
+                div.innerHTML = `
+                    <span>${index + 1}. ${item.text}</span>
+                    <span>${index === currentIndex ? '🔊' : index < currentIndex ? '✓' : '⏳'}</span>
+                `;
+                
+                queueList.appendChild(div);
+            });
+        }
+
+        async function clearCache() {
+            if (!confirm('Xóa tất cả file audio đã cache?')) {
+                return;
+            }
+
+            showStatus('🗑️ Đang xóa cache...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/cache/clear`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(`✓ ${data.message}`, 'success');
+                    document.getElementById('cachedCount').textContent = '0';
+                } else {
+                    showStatus('❌ Lỗi xóa cache', 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Lỗi: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+FastAPI
+uvicorn
+pydantic
+python-multipart
+aiofiles
+subprocess
+numpy
+scipy
