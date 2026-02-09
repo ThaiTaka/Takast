@@ -18,6 +18,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
 
 # Build
 frontend/dist/
@@ -33,6 +39,17 @@ frontend/build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Environment
+.env
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Prisma
+prisma/migrations
 
 # Data
 data/checkpoints/

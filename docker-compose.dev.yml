@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: takash-app
+    volumes:
+      - .:/workspace:cached
+      - /workspace/node_modules
+      - /workspace/.next
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://takash:takash_password@db:5432/takash_db?schema=public
+      - NEXTAUTH_SECRET=takash-secret-key-change-in-production
+      - NEXTAUTH_URL=http://localhost:3000
+    depends_on:
+      - db
+    networks:
+      - takash-network
+    command: tail -f /dev/null
+    # Keep container running for development
+
+  db:
+    image: postgres:16-alpine
+    container_name: takash-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: takash
+      POSTGRES_PASSWORD: takash_password
+      POSTGRES_DB: takash_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - takash-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U takash"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  takash-network:
+    driver: bridge

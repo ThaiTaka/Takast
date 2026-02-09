@@ -1,0 +1,73 @@
+// Takash Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  READER
+  AUTHOR
+}
+
+enum BookStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashed with bcrypt
+  name      String?
+  role      UserRole @default(READER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  books     Book[]
+  
+  @@index([email])
+  @@map("users")
+}
+
+model Book {
+  id          String     @id @default(cuid())
+  title       String
+  description String?    @db.Text
+  coverImage  String?    // URL to cover image
+  status      BookStatus @default(DRAFT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  publishedAt DateTime?
+
+  // Relations
+  authorId    String
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  chapters    Chapter[]
+
+  @@index([authorId])
+  @@index([status])
+  @@map("books")
+}
+
+model Chapter {
+  id         String   @id @default(cuid())
+  title      String
+  content    String   @db.Text // Rich text/HTML content
+  orderIndex Int      // For ordering chapters
+  audioUrl   String?  // Optional audio file URL
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  bookId     String
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, orderIndex])
+  @@index([bookId])
+  @@map("chapters")
+}
